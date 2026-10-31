@@ -16,7 +16,7 @@ Custom integration for Solar Frontier inverters. Based on [python-solarfrontier 
 
 ### via HACS
 1. Go to HACS -> Integrations -> Custom repositories
-2. Paste https://github.com/ernestasga/ha-solarfrontier and select Categoty - Integration
+2. Paste https://github.com/desterhuizen/ha-solarfrontier and select Categoty - Integration
 4. Go to Settings -> Integrations -> Add Integration
 5. Search Solar Frontier and enter IP address of the inverter
 

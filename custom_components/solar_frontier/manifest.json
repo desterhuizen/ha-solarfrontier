@@ -3,12 +3,12 @@
   "name": "Solar Frontier",
   "version": "0.2.0",
   "codeowners": [
-    "@ernestasga"
+    "@desterhuizen"
   ],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/ernestasga/ha-solarfrontier",
-  "issue_tracker": "https://github.com/ernestasga/ha-solarfrontier/issues",
+  "documentation": "https://github.com/desterhuizen/ha-solarfrontier",
+  "issue_tracker": "https://github.com/desterhuizen/ha-solarfrontier/issues",
   "homekit": {},
   "iot_class": "local_polling",
   "requirements": ["python-solarfrontier==0.1.1"]
