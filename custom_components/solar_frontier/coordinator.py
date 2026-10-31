@@ -1,4 +1,5 @@
 """Coordinators for data fetching."""
+import asyncio
 from datetime import timedelta
 import logging
 
@@ -7,6 +8,8 @@ from python_solarfrontier.api import SolarFrontierAPI
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+
+from .firmware import read_chart
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -39,20 +42,61 @@ class SystemInfoCoordinator(SolarFrontierBaseCoordinator):
             raise UpdateFailed(f"Error fetching system info: {e}") from e
 
 
-class PowerYieldCoordinator(SolarFrontierBaseCoordinator):
-    """Coordinator for fetching power yield data from Solar Frontier inverter."""
+class DayChartCoordinator(SolarFrontierBaseCoordinator):
+    """Coordinator for the day yield chart, which also carries charted power.
+
+    Read more often than the other yields because it doubles as the power
+    reading on firmware that serves no measurements table.
+    """
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api: SolarFrontierAPI,
+        update_interval: timedelta,
+        path: str,
+        include_power: bool,
+    ) -> None:
+        """Initialize the coordinator."""
+        super().__init__(hass, api, update_interval)
+        self.path = path
+        self.include_power = include_power
 
     async def _async_update_data(self):
-        """Fetch power yield data from Solar Frontier inverter."""
+        """Fetch the day yield, and the charted power where it is needed."""
         try:
-            return {
-                "day": await self.api.get_yield_day(),
-                "month": await self.api.get_yield_month(),
-                "year": await self.api.get_yield_year(),
-                "total": await self.api.get_yield_total(),
-            }
-        except aiohttp.ClientError as e:
-            raise UpdateFailed(f"Error fetching power yield data: {e}") from e
+            total, power = await read_chart(self.api, self.path)
+        except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+            raise UpdateFailed(f"Error fetching day yield: {e}") from e
+        data = {"day": total}
+        if self.include_power:
+            data["ac_power"] = power
+        return data
+
+
+class YieldCoordinator(SolarFrontierBaseCoordinator):
+    """Coordinator for the month, year and total yields the inverter serves."""
+
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        api: SolarFrontierAPI,
+        update_interval: timedelta,
+        paths: dict[str, str],
+    ) -> None:
+        """Initialize the coordinator."""
+        super().__init__(hass, api, update_interval)
+        self.paths = paths
+
+    async def _async_update_data(self):
+        """Fetch each supported yield total, one request at a time."""
+        data = {}
+        for name, path in self.paths.items():
+            try:
+                data[name], _ = await read_chart(self.api, path)
+            except (aiohttp.ClientError, asyncio.TimeoutError) as e:
+                raise UpdateFailed(f"Error fetching {name} yield: {e}") from e
+        return data
 
 class MeasurementsCoordinator(SolarFrontierBaseCoordinator):
     """Coordinator for fetching measurement data from Solar Frontier inverter."""
